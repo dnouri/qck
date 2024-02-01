@@ -76,6 +76,8 @@ def main(sql_file, args, interactive, to_parquet, to_csv, limit):
     else:
         if not limit:
             rs2 = duckdb.sql("SELECT * FROM rs LIMIT 99")
+        else:
+            rs2 = rs
         df = rs2.df()
         print(df.to_markdown())
         if not limit:
