@@ -10,7 +10,7 @@ import jinja2
 @click.argument("sql-file")
 @click.argument("args", nargs=-1)
 @click.option(
-    "--interactive/--no-interactive",
+    "--interactive",
     is_flag=True,
     help="Enter Python prompt after running the query.",
 )
@@ -26,7 +26,12 @@ import jinja2
     "--limit",
     help="Limit the output to n rows.",
 )
-def main(sql_file, args, interactive, to_parquet, to_csv, limit):
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+)
+def main(sql_file, args, interactive, to_parquet, to_csv, limit, verbose):
     """Run DuckDB SQL scripts
 
     By default, will write output to terminal.  Use --limit to
@@ -52,10 +57,11 @@ def main(sql_file, args, interactive, to_parquet, to_csv, limit):
     if limit:
         query += f"\nLIMIT {limit}"
 
-    print("```sql")
-    print(query)
-    print("```")
-    print()
+    if verbose:
+        print("```sql")
+        print(query.strip())
+        print("```")
+        print()
 
     rs = duckdb.sql(query)
     if interactive:
