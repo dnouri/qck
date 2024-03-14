@@ -74,6 +74,10 @@ def main(sql_file, args, interactive, to_parquet, to_csv, limit, verbose):
     elif to_parquet:
         duckdb.sql(f"COPY rs TO '{to_parquet}' (FORMAT 'PARQUET')")
         n_rows = duckdb.sql(f"SELECT COUNT(*) FROM '{to_parquet}'").fetchone()[0]
+        if verbose:
+            summary = duckdb.sql(f"SUMMARIZE SELECT * FROM '{to_parquet}'")
+            print(summary.df().to_markdown())
+            print()
         print(f"Wrote {n_rows:,} rows to {to_parquet}")
     elif to_csv:
         duckdb.sql(f"COPY rs TO '{to_csv}' (FORMAT 'CSV')")
