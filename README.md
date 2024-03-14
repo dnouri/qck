@@ -20,7 +20,8 @@ the results to the terminal:
 qck myquery.sql
 ```
 
-You can also LIMIT the number of rows in the output by adding a flag:
+The default is to `LIMIT` the output to 100 lines.  You can override
+this with the `--limit` option:
 
 ```bash
 qck myquery.sql --limit 10  # will only print 10 rows
