@@ -6,6 +6,50 @@ import duckdb
 import jinja2
 
 
+def qck(
+    sql_file,
+    params=None,
+    search_paths=('.', '/'),
+    limit=None,
+    connection=duckdb,
+    print_query=False,
+):
+    """Execute DuckDB query with optional parameter substitution and
+    Jinja2 templating.
+
+    Args:
+        sql_file: Path to the SQL file containing the query template.
+        params: Parameters for query substitution. Defaults to None.
+        search_paths: List of directories to search for the SQL file.
+        limit: Maximum number of rows to return. Defaults to None.
+        connection: DuckDB database connection. Defaults to `duckdb`.
+        print_query: Whether to print the generated SQL query. Defaults to False.
+
+    Returns:
+        DuckDB result set.
+    """
+    if params is None:
+        params = {}
+    env = jinja2.Environment(
+        loader=jinja2.FileSystemLoader(search_paths),
+        undefined=jinja2.StrictUndefined,
+        autoescape=False,
+        trim_blocks=False,
+        lstrip_blocks=True,
+        line_comment_prefix="--",
+    )
+    template = env.get_template(sql_file)
+    query = template.render(**params)
+    if limit:
+        query += f"\nLIMIT {limit}"
+    if print_query:
+        print("```sql")
+        print(query.strip())
+        print("```")
+        print()
+    return connection.sql(query)
+
+
 @click.command()
 @click.argument("sql-file")
 @click.argument("args", nargs=-1)
@@ -44,26 +88,8 @@ def main(sql_file, args, interactive, to_parquet, to_csv, limit, verbose):
         key, value = arg.split('=')
         params[key] = value
 
-    env = jinja2.Environment(
-        loader=jinja2.FileSystemLoader('.'),
-        undefined=jinja2.StrictUndefined,
-        autoescape=False,
-        trim_blocks=False,
-        lstrip_blocks=True,
-        line_comment_prefix="--",
-    )
-    template = env.get_template(sql_file)
-    query = template.render(**params)
-    if limit:
-        query += f"\nLIMIT {limit}"
+    rs = qck(sql_file, params, limit=limit, print_query=verbose)
 
-    if verbose:
-        print("```sql")
-        print(query.strip())
-        print("```")
-        print()
-
-    rs = duckdb.sql(query)
     if interactive:
         local = globals().copy()
         local.update(locals())
