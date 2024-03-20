@@ -33,3 +33,14 @@ To execute a query and write the result to a Parquet file, use
 ```bash
 qck myquery.sql --to-parquet myresult.parquet
 ```
+
+You can also call `qck` from within Python:
+
+```python
+from qck import qck
+rs = qck("myquery.sql")
+rs.to_parquet("myresult.parquet")
+```
+
+For a full list of arguments to `qck`, please refer to the
+[source](qck.py).
