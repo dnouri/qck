@@ -1,9 +1,26 @@
 import code
+from importlib import import_module
 from time import time
 
 import click
 import duckdb
 import jinja2
+
+
+def resolve(dotted_name):
+    if ':' in dotted_name:
+        module, name = dotted_name.split(':')
+    elif '.' in dotted_name:
+        module, name = dotted_name.rsplit('.', 1)
+    else:
+        module, name = dotted_name, None
+
+    attr = import_module(module)
+    if name:
+        for name in name.split('.'):
+            attr = getattr(attr, name)
+
+    return attr
 
 
 def qck(
@@ -38,6 +55,7 @@ def qck(
         lstrip_blocks=True,
         line_comment_prefix="--",
     )
+    env.globals['import'] = resolve
     template = env.get_template(sql_file)
     query = template.render(**params)
     if limit:
