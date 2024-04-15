@@ -44,3 +44,25 @@ rs.to_parquet("myresult.parquet")
 
 For a full list of arguments to `qck`, please refer to the
 [source](qck.py).
+
+## 🖋️ Templating
+
+Qck can interpret SQL files as Jinja templates, enabling the use of
+control structures like for loops within SQL files. Additionally, Qck
+introduces a special variable, `import`, in templates, enabling access
+to arbitrary Python functions. For instance, consider the following
+example, where we import the `glob` function and utilize it to list
+files to query from:
+
+```jinja
+{% for fname in import('glob.glob')('data/*xlsx') %}
+SELECT
+    "Value" AS value,
+    "Région" AS region,
+FROM
+    st_read('{{ fname }}')
+{% if not loop.last %}
+UNION ALL
+{% endif %}
+{% endfor %}
+```
