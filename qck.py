@@ -8,25 +8,26 @@ import jinja2
 
 
 def resolve(dotted_name):
-    if ':' in dotted_name:
-        module, name = dotted_name.split(':')
-    elif '.' in dotted_name:
-        module, name = dotted_name.rsplit('.', 1)
+    if ":" in dotted_name:
+        module, name = dotted_name.split(":")
+    elif "." in dotted_name:
+        module, name = dotted_name.rsplit(".", 1)
     else:
         module, name = dotted_name, None
 
     attr = import_module(module)
     if name:
-        for name in name.split('.'):
+        for name in name.split("."):
             attr = getattr(attr, name)
 
     return attr
 
 
 def qck(
-    sql_file,
+    sql_file=None,
+    sql_content=None,
     params=None,
-    search_paths=('.', '/'),
+    search_paths=(".", "/"),
     limit=None,
     connection=duckdb,
     print_query=False,
@@ -36,6 +37,7 @@ def qck(
 
     Args:
         sql_file: Path to the SQL file containing the query template.
+        sql_content: SQL content as a string (for stdin/direct input).
         params: Parameters for query substitution. Defaults to None.
         search_paths: List of directories to search for the SQL file.
         limit: Maximum number of rows to return. Defaults to None.
@@ -47,17 +49,32 @@ def qck(
     """
     if params is None:
         params = {}
-    env = jinja2.Environment(
-        loader=jinja2.FileSystemLoader(search_paths),
-        undefined=jinja2.StrictUndefined,
-        autoescape=False,
-        trim_blocks=False,
-        lstrip_blocks=True,
-        line_comment_prefix="--",
-    )
-    env.globals['import'] = resolve
-    template = env.get_template(sql_file)
-    query = template.render(**params)
+
+    if sql_content is not None:
+        env = jinja2.Environment(
+            undefined=jinja2.StrictUndefined,
+            autoescape=False,
+            trim_blocks=False,
+            lstrip_blocks=True,
+            line_comment_prefix="--",
+        )
+        env.globals["import"] = resolve
+        template = env.from_string(sql_content)
+        query = template.render(**params)
+    elif sql_file is not None:
+        env = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(search_paths),
+            undefined=jinja2.StrictUndefined,
+            autoescape=False,
+            trim_blocks=False,
+            lstrip_blocks=True,
+            line_comment_prefix="--",
+        )
+        env.globals["import"] = resolve
+        template = env.get_template(sql_file)
+        query = template.render(**params)
+    else:
+        raise ValueError("Either sql_file or sql_content must be provided")
     if limit:
         query += f"\nLIMIT {limit}"
     if print_query:
@@ -98,15 +115,25 @@ def main(sql_file, args, interactive, to_parquet, to_csv, limit, verbose):
 
     By default, will write output to terminal.  Use --limit to
     restrict number of output rows.
+
+    Use '-' as SQL-FILE to read SQL from stdin.
     """
     t0 = time()
 
     params = {}
     for arg in args:
-        key, value = arg.split('=')
+        key, value = arg.split("=")
         params[key] = value
 
-    rs = qck(sql_file, params, limit=limit, print_query=verbose)
+    if sql_file == "-":
+        import sys
+
+        sql_content = sys.stdin.read()
+        rs = qck(
+            sql_content=sql_content, params=params, limit=limit, print_query=verbose
+        )
+    else:
+        rs = qck(sql_file=sql_file, params=params, limit=limit, print_query=verbose)
 
     if interactive:
         local = globals().copy()
@@ -141,5 +168,5 @@ def main(sql_file, args, interactive, to_parquet, to_csv, limit, verbose):
     print(f"Done in {time() - t0:.3} sec")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
