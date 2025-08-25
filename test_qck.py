@@ -104,6 +104,83 @@ class TestCLI:
         assert "SELECT 42 as answer" in result.output
         assert "42" in result.output
 
+    def test_cli_sql_parser_error(self):
+        """Test that parser errors show clean error messages with query"""
+        runner = CliRunner()
+        sql_input = "SELECTX * FROM table1"
+
+        result = runner.invoke(main, ["-"], input=sql_input)
+        assert result.exit_code == 1
+        assert "Failed SQL query:" in result.output
+        assert "```sql" in result.output
+        assert "SELECTX * FROM table1" in result.output
+        assert "SQL Error:" in result.output
+        assert "Parser Error:" in result.output
+        assert "syntax error at or near \"SELECTX\"" in result.output
+        # Should not contain Python traceback elements
+        assert "Traceback" not in result.output
+        assert "File \"" not in result.output
+
+    def test_cli_sql_catalog_error(self):
+        """Test that catalog errors show clean error messages with hints"""
+        runner = CliRunner()
+        sql_input = "SELECT * FROM non_existent_table"
+
+        result = runner.invoke(main, ["-"], input=sql_input)
+        assert result.exit_code == 1
+        assert "Failed SQL query:" in result.output
+        assert "```sql" in result.output
+        assert "SELECT * FROM non_existent_table" in result.output
+        assert "SQL Error:" in result.output
+        assert "Catalog Error:" in result.output
+        assert "Table with name non_existent_table does not exist" in result.output
+        # Should preserve DuckDB's helpful hints
+        assert "Did you mean" in result.output
+        # Should not contain Python traceback
+        assert "Traceback" not in result.output
+        assert "File \"" not in result.output
+
+    def test_cli_sql_binder_error(self):
+        """Test that binder errors show clean error messages"""
+        runner = CliRunner()
+        sql_input = "SELECT unknown_column FROM (SELECT 1 as a)"
+
+        result = runner.invoke(main, ["-"], input=sql_input)
+        assert result.exit_code == 1
+        assert "Failed SQL query:" in result.output
+        assert "```sql" in result.output
+        assert "SELECT unknown_column FROM (SELECT 1 as a)" in result.output
+        assert "SQL Error:" in result.output
+        assert "Binder Error:" in result.output
+        assert "unknown_column" in result.output
+        # Should not contain Python traceback
+        assert "Traceback" not in result.output
+
+    def test_cli_file_not_found_error(self):
+        """Test that file not found errors show clean error messages"""
+        runner = CliRunner()
+
+        result = runner.invoke(main, ["non_existent_file.sql"])
+        assert result.exit_code == 1
+        assert "File Error:" in result.output
+        assert "non_existent_file.sql" in result.output
+        assert "not found" in result.output
+        # Should not contain Python traceback
+        assert "Traceback" not in result.output
+        assert "TemplateNotFound" not in result.output
+
+    def test_cli_template_error(self):
+        """Test that template errors show clean error messages"""
+        runner = CliRunner()
+        sql_input = "SELECT {{ undefined_var }}"
+
+        result = runner.invoke(main, ["-"], input=sql_input)
+        assert result.exit_code == 1
+        assert "Template Error:" in result.output
+        assert "undefined_var" in result.output
+        # Should not contain Python traceback
+        assert "Traceback" not in result.output
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
