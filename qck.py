@@ -1,6 +1,7 @@
 import code
 from importlib import import_module
 from time import time
+import sys
 
 import click
 import duckdb
@@ -82,7 +83,18 @@ def qck(
         print(query.strip())
         print("```")
         print()
-    return connection.sql(query)
+
+    try:
+        return connection.sql(query)
+    except (
+        duckdb.ParserException,
+        duckdb.CatalogException,
+        duckdb.BinderException,
+        duckdb.InvalidInputException,
+    ) as e:
+        # Re-raise with query attached for error handling
+        e.query = query
+        raise
 
 
 @click.command()
@@ -125,15 +137,41 @@ def main(sql_file, args, interactive, to_parquet, to_csv, limit, verbose):
         key, value = arg.split("=")
         params[key] = value
 
-    if sql_file == "-":
-        import sys
-
-        sql_content = sys.stdin.read()
-        rs = qck(
-            sql_content=sql_content, params=params, limit=limit, print_query=verbose
-        )
-    else:
-        rs = qck(sql_file=sql_file, params=params, limit=limit, print_query=verbose)
+    try:
+        if sql_file == "-":
+            sql_content = sys.stdin.read()
+            rs = qck(
+                sql_content=sql_content, params=params, limit=limit, print_query=verbose
+            )
+        else:
+            rs = qck(sql_file=sql_file, params=params, limit=limit, print_query=verbose)
+    except (
+        duckdb.ParserException,
+        duckdb.CatalogException,
+        duckdb.BinderException,
+        duckdb.InvalidInputException,
+    ) as e:
+        # User SQL errors - show the rendered query first, then the error
+        if hasattr(e, "query"):
+            click.echo("Failed SQL query:", err=True)
+            click.echo("```sql", err=True)
+            click.echo(e.query.strip(), err=True)
+            click.echo("```", err=True)
+            click.echo("", err=True)
+        click.echo(f"SQL Error: {str(e)}", err=True)
+        sys.exit(1)
+    except duckdb.Error as e:
+        # Other DuckDB errors
+        click.echo(f"Database Error: {str(e)}", err=True)
+        sys.exit(1)
+    except jinja2.exceptions.TemplateNotFound:
+        # File not found errors
+        click.echo(f"File Error: SQL file '{sql_file}' not found", err=True)
+        sys.exit(1)
+    except jinja2.exceptions.TemplateError as e:
+        # Template rendering errors
+        click.echo(f"Template Error: {str(e)}", err=True)
+        sys.exit(1)
 
     if interactive:
         local = globals().copy()
