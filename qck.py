@@ -151,8 +151,8 @@ def main(sql_file, args, interactive, to_parquet, to_csv, limit, verbose):
         duckdb.BinderException,
         duckdb.InvalidInputException,
     ) as e:
-        # User SQL errors - show the rendered query first, then the error
-        if hasattr(e, "query"):
+        # User SQL errors - show the rendered query first (only in verbose mode), then the error
+        if verbose and hasattr(e, "query"):
             click.echo("Failed SQL query:", err=True)
             click.echo("```sql", err=True)
             click.echo(e.query.strip(), err=True)
