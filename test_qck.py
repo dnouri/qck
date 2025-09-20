@@ -109,7 +109,7 @@ class TestCLI:
         runner = CliRunner()
         sql_input = "SELECTX * FROM table1"
 
-        result = runner.invoke(main, ["-"], input=sql_input)
+        result = runner.invoke(main, ["-", "-v"], input=sql_input)
         assert result.exit_code == 1
         assert "Failed SQL query:" in result.output
         assert "```sql" in result.output
@@ -126,7 +126,7 @@ class TestCLI:
         runner = CliRunner()
         sql_input = "SELECT * FROM non_existent_table"
 
-        result = runner.invoke(main, ["-"], input=sql_input)
+        result = runner.invoke(main, ["-", "-v"], input=sql_input)
         assert result.exit_code == 1
         assert "Failed SQL query:" in result.output
         assert "```sql" in result.output
@@ -145,7 +145,7 @@ class TestCLI:
         runner = CliRunner()
         sql_input = "SELECT unknown_column FROM (SELECT 1 as a)"
 
-        result = runner.invoke(main, ["-"], input=sql_input)
+        result = runner.invoke(main, ["-", "-v"], input=sql_input)
         assert result.exit_code == 1
         assert "Failed SQL query:" in result.output
         assert "```sql" in result.output
