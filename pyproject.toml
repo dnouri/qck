@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qck"
+version = "2025.8.28"
+description = "CLI to conveniently run DuckDB SQL scripts with support for templating"
+readme = "README.md"
+license = "MIT"
+authors = [
+    {name = "Daniel Nouri"},
+]
+requires-python = ">=3.8"
+dependencies = [
+    "click",
+    "duckdb",
+    "jinja2",
+    "pandas",
+    "tabulate",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: SQL",
+    "Topic :: Database :: Front-Ends",
+]
+
+[project.urls]
+Homepage = "https://github.com/dnouri/qck"
+
+[project.optional-dependencies]
+devel = [
+    "black",
+    "ruff",
+]
+
+[project.scripts]
+qck = "qck:main"
+
+[tool.setuptools]
+py-modules = ["qck"]
+zip-safe = false
+include-package-data = true
